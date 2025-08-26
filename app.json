@@ -34,7 +34,8 @@
     "android": {
       "package": "com.bala0111.rmjewellers",
       "jsEngine": "hermes",
-      "permissions": ["INTERNET"]
+      "permissions": ["INTERNET"],
+      "googleServicesFile": "./google-services.json"
     }
   }
 }

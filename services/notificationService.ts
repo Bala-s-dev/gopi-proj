@@ -5,8 +5,10 @@ import { Platform } from 'react-native';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
   }),
 });
 

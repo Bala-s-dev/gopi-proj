@@ -10,15 +10,14 @@ import { Price } from '@/types';
 import { TrendingUp, Coins } from 'lucide-react-native';
 
 export default function HomeScreen() {
-  const { user } = useAuth();
   const [prices, setPrices] = useState<Price | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [gramsToBuy, setGramsToBuy] = useState('');
+  const [rupeesToBuy, setRupeesToBuy] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorVisible, setErrorVisible] = useState(false);
   const errorOpacity = useState(new Animated.Value(0))[0];
-
+  const { user, fetchUserData} = useAuth();
   useEffect(() => {
     fetchPrices();
     setupNotifications();
@@ -43,18 +42,16 @@ export default function HomeScreen() {
       });
     }, 3000);
   };
+
   const setupNotifications = async () => {
     await requestNotificationPermissions();
-    
-    // Listen for notifications while app is in foreground
     const subscription = Notifications.addNotificationReceivedListener(notification => {
       const { title, body } = notification.request.content;
       if (title?.includes('Price Update')) {
         showError(`${title}: ${body}`);
-        fetchPrices(); // Refresh prices when notification received
+        fetchPrices();
       }
     });
-
     return () => subscription.remove();
   };
 
@@ -68,35 +65,33 @@ export default function HomeScreen() {
   };
 
   const handleBuyGold = async () => {
-    if (!gramsToBuy || isNaN(parseFloat(gramsToBuy))) {
-      showError('Please enter a valid amount of grams');
+    if (!rupeesToBuy || isNaN(parseFloat(rupeesToBuy))) {
+      showError('Please enter a valid amount in rupees');
       return;
     }
-
     if (!prices || !user) {
       showError('Unable to process transaction. Please try again.');
       return;
     }
-
-    const grams = parseFloat(gramsToBuy);
-    const totalAmount = grams * prices.goldPrice;
+    const rupees = parseFloat(rupeesToBuy);
+    const grams = rupees / prices.goldPrice;
 
     Alert.alert(
       'Confirm Purchase',
-      `Purchase ${grams}g of gold for ₹${totalAmount.toFixed(2)}?`,
+      `Purchase ${grams.toFixed(4)}g of gold for ₹${rupees.toFixed(2)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: processPurchase }
+        { text: 'Confirm', onPress: () => processPurchase(grams, rupees) }
       ]
     );
+    await fetchPrices();
   };
 
-  const processPurchase = async () => {
+  const processPurchase = async (grams: number, rupees: number) => {
     if (!user || !prices) return;
 
     setLoading(true);
     try {
-      const grams = parseFloat(gramsToBuy);
       await createTransaction(
         user.id,
         user.bookid,
@@ -104,10 +99,11 @@ export default function HomeScreen() {
         grams,
         prices.goldPrice
       );
-      
       showError('Gold purchased successfully!');
       setModalVisible(false);
-      setGramsToBuy('');
+      setRupeesToBuy('');
+      await fetchPrices();
+      await fetchUserData(user.id);
     } catch (error) {
       showError('Failed to process transaction. Please try again.');
     } finally {
@@ -203,16 +199,16 @@ export default function HomeScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Enter grams to buy"
+              placeholder="Enter amount in rupees"
               placeholderTextColor="#888"
-              value={gramsToBuy}
-              onChangeText={setGramsToBuy}
+              value={rupeesToBuy}
+              onChangeText={setRupeesToBuy}
               keyboardType="numeric"
             />
 
-            {gramsToBuy && prices && (
+            {rupeesToBuy && prices && (
               <Text style={styles.totalAmount}>
-                Total: ₹{(parseFloat(gramsToBuy) * prices.goldPrice).toFixed(2)}
+                You will get: {(parseFloat(rupeesToBuy) / prices.goldPrice).toFixed(4)}g
               </Text>
             )}
 
